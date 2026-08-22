@@ -98,12 +98,12 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
     final renderBox = rowContext.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
     showMenuX(
-      context: rowContext,
-      location: Offset(
+      rowContext,
+      Offset(
         offset.dx + renderBox.size.width / 2 - 121,
         offset.dy + renderBox.size.height - 8,
       ),
-      entries: [
+      [
         MenuEntry(
           icon: Icons.copy,
           text: 'Copy'.tl,
