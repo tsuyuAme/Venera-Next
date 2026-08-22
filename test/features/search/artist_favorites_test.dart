@@ -240,4 +240,22 @@ void main() {
     expect(merged['连裤袜'], 9); // higher count kept, NOT 12
     expect(merged['单本'], 12); // untouched
   });
+
+
+  test('mergeSimplifiedVariants strips emoji decorations', () {
+    String toSimplified(String t) {
+      return t.replaceAll('鏡', '镜');
+    }
+
+    final merged = mergeSimplifiedVariants(
+      {
+        '眼镜👓': 29, // translation db entry with decorative emoji
+        '眼鏡': 24, // traditional form from a CN source
+      },
+      toSimplified,
+    );
+
+    // Both collapse into one key, keeping the higher count (no sum).
+    expect(merged, {'眼镜': 29});
+  });
 }

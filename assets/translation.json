@@ -640,7 +640,11 @@
     "Re-analyze": "重新分析",
     "No tag data from sources": "源未返回标签数据",
     "Profile generated": "特点生成完成",
-    "Frequent tags: @tags": "常画：@tags"
+    "Frequent tags: @tags": "常画：@tags",
+    "Analyze all": "全体搜刮",
+    "Analyze all artists": "全体搜刮",
+    "Analyze all @count artists? It may take several minutes.": "要分析全部 @count 位画师吗？分析可能需要几分钟。",
+    "All artists analyzed": "全体画师分析完成"
   },
   "zh_TW": {
     "Home": "首頁",
@@ -1283,6 +1287,10 @@
     "Re-analyze": "重新分析",
     "No tag data from sources": "源未返回標籤資料",
     "Profile generated": "特點生成完成",
-    "Frequent tags: @tags": "常畫：@tags"
+    "Frequent tags: @tags": "常畫：@tags",
+    "Analyze all": "全體搜刮",
+    "Analyze all artists": "全體搜刮",
+    "Analyze all @count artists? It may take several minutes.": "要分析全部 @count 位畫師嗎？分析可能需要幾分鐘。",
+    "All artists analyzed": "全體畫師分析完成"
   }
 }

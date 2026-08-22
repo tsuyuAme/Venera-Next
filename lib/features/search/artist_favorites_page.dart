@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:venera_next/components/appbar.dart';
@@ -48,6 +50,9 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
   /// artist names currently running profile analysis
   final Set<String> _analyzing = {};
 
+  /// true while the "analyze all" batch runs
+  bool _analyzingAll = false;
+
   void _refresh() {
     var artists = groupArtistShortcuts(SearchShortcutManager.instance.all);
     if (mounted) {
@@ -79,6 +84,38 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
   void _copyArtist(String name) {
     Clipboard.setData(ClipboardData(text: name));
     context.showMessage(message: 'Copied'.tl);
+  }
+
+  void _analyzeAll() {
+    if (_analyzingAll) return;
+    var names = groupArtistShortcuts(
+      SearchShortcutManager.instance.all,
+    ).keys.toList();
+    if (names.isEmpty) {
+      context.showMessage(message: 'No favorite artists yet'.tl);
+      return;
+    }
+    showConfirmDialog(
+      context: context,
+      title: 'Analyze all artists'.tl,
+      content: 'Analyze all @count artists? It may take several minutes.'
+          .tlParams({'count': names.length}),
+      onConfirm: () => unawaited(_runAnalyzeAll(names)),
+      confirmText: 'Start',
+    );
+  }
+
+  Future<void> _runAnalyzeAll(List<String> names) async {
+    setState(() {
+      _analyzingAll = true;
+    });
+    await analyzeAllArtists(names);
+    if (mounted) {
+      setState(() {
+        _analyzingAll = false;
+      });
+      context.showMessage(message: 'All artists analyzed'.tl);
+    }
   }
 
   Future<void> _analyze(String name) async {
@@ -158,7 +195,26 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
     var artists = _artists.entries.toList();
     return CustomScrollView(
       slivers: [
-        SliverAppbar(title: Text('Favorite authors'.tl)),
+        SliverAppbar(
+          title: Text('Favorite authors'.tl),
+          actions: [
+            if (_analyzingAll)
+              const Padding(
+                padding: EdgeInsets.all(14),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.autorenew),
+                tooltip: 'Analyze all'.tl,
+                onPressed: _analyzeAll,
+              ),
+          ],
+        ),
         if (artists.isEmpty)
           SliverFillRemaining(
             hasScrollBody: false,

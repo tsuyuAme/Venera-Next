@@ -107,13 +107,33 @@ Map<String, int> mergeSimplifiedVariants(
 ) {
   var result = <String, int>{};
   counts.forEach((tag, count) {
-    var key = toSimplified(tag);
+    var key = _stripDecoration(tag);
+    key = toSimplified(key);
     var existing = result[key];
     if (existing == null || count > existing) {
       result[key] = count;
     }
   });
   return result;
+}
+
+/// Removes emoji and decorative symbols from a tag.
+///
+/// The EhTagTranslation database decorates some entries with emoji (e.g.
+/// `眼镜👓`), which would otherwise split a tag into two keys and break
+/// simplified/traditional merging.
+String _stripDecoration(String text) {
+  var buffer = StringBuffer();
+  for (var rune in text.runes) {
+    var isDecoration = (rune >= 0x1F000 && rune <= 0x1FAFF) ||
+        (rune >= 0x2600 && rune <= 0x27BF) ||
+        (rune >= 0xFE00 && rune <= 0xFE0F) ||
+        rune == 0x200D ||
+        rune == 0x200B;
+    if (isDecoration) continue;
+    buffer.writeCharCode(rune);
+  }
+  return buffer.toString();
 }
 
 /// Normalizes one raw source tag for artist profile analysis.
@@ -326,6 +346,33 @@ Future<List<Comic>> _collectFromSource(
   return sourceComics;
 }
 
+/// Collects [name]'s works from one source with retry + backoff.
+///
+/// Returns whatever the source yields after up to [_kMaxAnalysisRetries]
+/// extra attempts; empty on persistent failure.
+Future<List<Comic>> _collectWithRetry(
+  SearchPageData search,
+  String name,
+) async {
+  var options = (search.searchOptions ?? const <SearchOptions>[])
+      .map((e) => e.defaultValue)
+      .toList();
+  var sourceComics = <Comic>[];
+  for (var attempt = 0; attempt <= _kMaxAnalysisRetries; attempt++) {
+    try {
+      sourceComics = await _collectFromSource(search, name, options);
+      if (sourceComics.isNotEmpty) break;
+    } catch (e) {
+      sourceComics = const <Comic>[];
+    }
+    if (attempt < _kMaxAnalysisRetries) {
+      // Short backoff so a network hiccup can recover.
+      await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
+    }
+  }
+  return sourceComics;
+}
+
 /// Searches [name] across all sources and returns the top content tags.
 ///
 /// Uses the same default search options and page numbering as the aggregated
@@ -334,29 +381,22 @@ Future<List<Comic>> _collectFromSource(
 /// analysis log for tuning. A failing source or exhausted pages do not
 /// block others.
 Future<List<String>> analyzeArtistProfile(String name) async {
+  // Fetch all sources in parallel (network-bound); each source keeps its
+  // own retry/backoff internally.
+  var sources = ComicSource.all().where((s) => s.searchPageData != null);
+  var results = await Future.wait(
+    sources.map(
+      (source) async => MapEntry(
+        source.key,
+        await _collectWithRetry(source.searchPageData!, name),
+      ),
+    ),
+  );
   var comics = <Comic>[];
   var perSourceComics = <String, int>{};
-  for (var source in ComicSource.all()) {
-    var search = source.searchPageData;
-    if (search == null) continue;
-    var options = (search.searchOptions ?? const <SearchOptions>[])
-        .map((e) => e.defaultValue)
-        .toList();
-    var sourceComics = <Comic>[];
-    for (var attempt = 0; attempt <= _kMaxAnalysisRetries; attempt++) {
-      try {
-        sourceComics = await _collectFromSource(search, name, options);
-        if (sourceComics.isNotEmpty) break;
-      } catch (e) {
-        sourceComics = const <Comic>[];
-      }
-      if (attempt < _kMaxAnalysisRetries) {
-        // Short backoff so a network hiccup can recover.
-        await Future.delayed(Duration(milliseconds: 600 * (attempt + 1)));
-      }
-    }
-    comics.addAll(sourceComics);
-    perSourceComics[source.key] = sourceComics.length;
+  for (var entry in results) {
+    comics.addAll(entry.value);
+    perSourceComics[entry.key] = entry.value.length;
   }
   comics = dedupeComicsByTitle(comics);
 
@@ -387,17 +427,48 @@ Future<List<String>> analyzeArtistProfile(String name) async {
   return result;
 }
 
+/// Analyzes [name] and caches the profile. Returns the tags (or cached).
+Future<List<String>> analyzeAndSaveArtist(String name) async {
+  try {
+    var tags = await analyzeArtistProfile(name);
+    if (tags.isNotEmpty) {
+      setArtistProfile(name, tags);
+      return tags;
+    }
+  } catch (e) {
+    // Fall through to cached profile.
+  }
+  return getArtistProfile(name)?['tags'] as List<String>? ?? const [];
+}
+
 /// Analyzes [name] in the background and caches the profile.
 ///
 /// Silent: failures and empty results are ignored so background auto
-/// analysis never interrupts the user.
+/// analysis never interrupts the user. Skips artists that already have a
+/// cached profile.
 Future<void> autoAnalyzeArtist(String name) async {
   if (getArtistProfile(name) != null) return;
-  try {
-    var tags = await analyzeArtistProfile(name);
-    if (tags.isEmpty) return;
-    setArtistProfile(name, tags);
-  } catch (e) {
-    // Silent by design.
+  await analyzeAndSaveArtist(name);
+}
+
+/// Maximum artists running profile analysis concurrently.
+const _kAllAnalysisConcurrency = 2;
+
+/// Re-analyzes every artist in [names] with [concurrency] parallel workers.
+///
+/// Unlike [autoAnalyzeArtist] this ignores existing cached profiles, so it
+/// is the "scrape everything" entry point. Completes when all artists are
+/// done; individual failures are silent.
+Future<void> analyzeAllArtists(
+  List<String> names, {
+  int concurrency = _kAllAnalysisConcurrency,
+}) async {
+  if (concurrency < 1) concurrency = 1;
+  for (var start = 0; start < names.length; start += concurrency) {
+    var batch = names.sublist(
+      start,
+      start + concurrency > names.length ? names.length : start + concurrency,
+    );
+    await Future.wait(batch.map(analyzeAndSaveArtist));
   }
 }
