@@ -209,7 +209,7 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
                         : 'Sources: @count'.tlParams({
                             'count': sources.length,
                           }),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Row(
