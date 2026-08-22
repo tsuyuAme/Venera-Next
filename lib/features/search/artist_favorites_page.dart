@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:venera_next/components/appbar.dart';
 import 'package:venera_next/components/menu.dart';
 import 'package:venera_next/components/message.dart';
+import 'package:venera_next/foundation/appdata.dart';
 import 'package:venera_next/foundation/context.dart';
 import 'package:venera_next/foundation/translations.dart';
 import 'package:venera_next/foundation/widget_utils.dart';
 import 'package:venera_next/features/search/aggregated_search_page.dart';
+import 'package:venera_next/features/search/artist_profile.dart';
 import 'package:venera_next/features/search/search_shortcuts.dart';
 
 /// Groups artist shortcuts by artist name, keeping the set of source keys
@@ -43,16 +45,22 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
   /// artist name -> source keys that contributed this artist
   Map<String, Set<String>> _artists = {};
 
+  /// artist names currently running profile analysis
+  final Set<String> _analyzing = {};
+
   void _refresh() {
     var artists = groupArtistShortcuts(SearchShortcutManager.instance.all);
-    setState(() {
-      _artists = artists;
-    });
+    if (mounted) {
+      setState(() {
+        _artists = artists;
+      });
+    }
   }
 
   @override
   void initState() {
     SearchShortcutManager.instance.addListener(_refresh);
+    appdata.settings.addListener(_refresh);
     _refresh();
     super.initState();
   }
@@ -60,6 +68,7 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
   @override
   void dispose() {
     SearchShortcutManager.instance.removeListener(_refresh);
+    appdata.settings.removeListener(_refresh);
     super.dispose();
   }
 
@@ -70,6 +79,26 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
   void _copyArtist(String name) {
     Clipboard.setData(ClipboardData(text: name));
     context.showMessage(message: 'Copied'.tl);
+  }
+
+  Future<void> _analyze(String name) async {
+    if (_analyzing.contains(name)) return;
+    setState(() => _analyzing.add(name));
+    try {
+      var tags = await analyzeArtistProfile(name);
+      if (!mounted) return;
+      if (tags.isEmpty) {
+        context.showMessage(message: 'No tag data from sources'.tl);
+      } else {
+        setArtistProfile(name, tags);
+        setState(() {});
+        context.showMessage(message: 'Profile generated'.tl);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _analyzing.remove(name));
+      }
+    }
   }
 
   void _deleteArtist(String name) {
@@ -87,6 +116,7 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
             manager.remove(shortcut);
           }
         }
+        removeArtistProfile(name);
         context.showMessage(message: 'Deleted'.tl);
       },
       confirmText: 'Delete',
@@ -104,6 +134,11 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
         offset.dy + renderBox.size.height - 8,
       ),
       [
+        MenuEntry(
+          icon: Icons.auto_awesome,
+          text: getArtistProfile(name) == null ? 'Analyze'.tl : 'Re-analyze'.tl,
+          onClick: () => _analyze(name),
+        ),
         MenuEntry(
           icon: Icons.copy,
           text: 'Copy'.tl,
@@ -159,18 +194,43 @@ class _ArtistFavoritesPageState extends State<ArtistFavoritesPage> {
             itemBuilder: (context, index) {
               var entry = artists[index];
               var sources = entry.value;
+              var profile = getArtistProfile(entry.key);
+              var analyzing = _analyzing.contains(entry.key);
               return Builder(
                 builder: (rowContext) => ListTile(
                   leading: const CircleAvatar(child: Icon(Icons.person)),
                   title: Text(entry.key),
                   subtitle: Text(
-                    'Sources: @count'.tlParams({
-                      'count': sources.length,
-                    }),
+                    profile != null
+                        ? 'Frequent tags: @tags'.tlParams({
+                            'tags': (profile['tags'] as List? ?? const [])
+                                .join('、'),
+                          })
+                        : 'Sources: @count'.tlParams({
+                            'count': sources.length,
+                          }),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      analyzing
+                          ? const SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(Icons.auto_awesome),
+                              tooltip: 'Analyze'.tl,
+                              onPressed: () => _analyze(entry.key),
+                            ),
                       IconButton(
                         icon: const Icon(Icons.copy_rounded),
                         tooltip: 'Copy'.tl,

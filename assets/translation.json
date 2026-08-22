@@ -635,7 +635,12 @@
     "Long press the artist tag on comic page to add": "在漫画详情页长按画师标签即可收藏",
     "Sources: @count": "来自 @count 个来源",
     "Delete artist": "删除画师",
-    "Delete \"@name\" from artist favorites?": "从画师收藏中删除「@name」？"
+    "Delete \"@name\" from artist favorites?": "从画师收藏中删除「@name」？",
+    "Analyze": "分析",
+    "Re-analyze": "重新分析",
+    "No tag data from sources": "源未返回标签数据",
+    "Profile generated": "特点生成完成",
+    "Frequent tags: @tags": "常画：@tags"
   },
   "zh_TW": {
     "Home": "首頁",
@@ -1273,6 +1278,11 @@
     "Long press the artist tag on comic page to add": "在漫畫詳情頁長按畫師標籤即可收藏",
     "Sources: @count": "來自 @count 個來源",
     "Delete artist": "刪除畫師",
-    "Delete \"@name\" from artist favorites?": "從畫師收藏中刪除「@name」？"
+    "Delete \"@name\" from artist favorites?": "從畫師收藏中刪除「@name」？",
+    "Analyze": "分析",
+    "Re-analyze": "重新分析",
+    "No tag data from sources": "源未返回標籤資料",
+    "Profile generated": "特點生成完成",
+    "Frequent tags: @tags": "常畫：@tags"
   }
 }

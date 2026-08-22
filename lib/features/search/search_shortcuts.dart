@@ -10,6 +10,7 @@ import 'package:venera_next/foundation/context.dart';
 import 'package:venera_next/foundation/translations.dart';
 import 'package:venera_next/foundation/widget_utils.dart';
 import 'package:venera_next/routing/page_jump_target.dart';
+import 'artist_profile.dart';
 
 enum SearchShortcutKind { author, tag }
 
@@ -168,6 +169,10 @@ void showSearchShortcutMenu({
                   : 'Save tag shortcut'.tl),
         onClick: () {
           manager.toggle(shortcut);
+          if (!saved && shortcut.isAuthor) {
+            // Auto-analyze artist features right after favoriting.
+            unawaited(autoAnalyzeArtist(shortcut.value));
+          }
           context.showMessage(
             message: saved
                 ? 'Search shortcut removed'.tl
