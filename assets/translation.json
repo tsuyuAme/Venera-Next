@@ -629,7 +629,13 @@
     "Fetching image list...": "正在获取图片列表...",
     "Fetching image list (@a/@b)...": "正在获取图片列表（@a/@b）...",
     "Downloading...": "正在下载...",
-    "Webview": "网页浏览"
+    "Webview": "网页浏览",
+    "Artist favorites": "画师收藏",
+    "No favorite artists yet": "还没有收藏的画师",
+    "Long press the artist tag on comic page to add": "在漫画详情页长按画师标签即可收藏",
+    "Sources: @count": "来自 @count 个来源",
+    "Delete artist": "删除画师",
+    "Delete \"@name\" from artist favorites?": "从画师收藏中删除「@name」？"
   },
   "zh_TW": {
     "Home": "首頁",
@@ -1261,6 +1267,12 @@
     "Fetching image list...": "正在取得圖片清單...",
     "Fetching image list (@a/@b)...": "正在取得圖片清單（@a/@b）...",
     "Downloading...": "正在下載...",
-    "Webview": "網頁瀏覽"
+    "Webview": "網頁瀏覽",
+    "Artist favorites": "畫師收藏",
+    "No favorite artists yet": "還沒有收藏的畫師",
+    "Long press the artist tag on comic page to add": "在漫畫詳情頁長按畫師標籤即可收藏",
+    "Sources: @count": "來自 @count 個來源",
+    "Delete artist": "刪除畫師",
+    "Delete \"@name\" from artist favorites?": "從畫師收藏中刪除「@name」？"
   }
 }
