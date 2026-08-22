@@ -70,25 +70,25 @@ class _ArtistFavoritesSummaryState extends State<ArtistFavoritesSummary> {
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 8),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 8,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '$_count',
-                      style: ts.s14.copyWith(
+                      style: ts.s12.copyWith(
                         color: Theme.of(
                           context,
                         ).colorScheme.onSecondaryContainer,
                       ),
                     ),
                   ),
-                const Icon(Icons.chevron_right).paddingRight(8),
+                const Icon(Icons.arrow_right),
               ],
-            ).paddingHorizontal(12),
+            ).paddingHorizontal(16),
           ),
         ),
       ),
