@@ -2,7 +2,7 @@ name: venera_next
 description: "A comic app."
 publish_to: 'none'
 homepage: https://github.com/CyrilPeng/venera-next
-version: 1.14.3+300
+version: 1.14.4+222
 
 environment:
   sdk: '>=3.8.0 <4.0.0'
@@ -15,13 +15,13 @@ dependencies:
   intl: ^0.20.2
   window_manager: ^0.5.2
   sqlite3: ^2.7.4
-  sqlite3_flutter_libs: ^0.5.30
+  sqlite3_flutter_libs: ^0.5.42
   flutter_qjs:
     git:
       url: https://github.com/venera-app/flutter_qjs
       ref: 8feae95df7fb00455df129ad7a0dfec1d0e8d8e4
-  crypto: ^3.0.6
-  dio: ^5.9.2
+  crypto: ^3.0.7
+  dio: ^5.11.0
   html: ^0.15.6
   pointycastle: ^4.0.0
   url_launcher: ^6.3.2
@@ -31,14 +31,14 @@ dependencies:
       url: https://github.com/venera-app/photo_view
       ref: a1255d1b5945aad4b7323303ec2ecdf0c90ffc4c
   mime: ^2.0.0
-  share_plus: ^12.0.1
+  share_plus: ^12.0.2
   scrollable_positioned_list:
     git:
       url: https://github.com/venera-app/flutter.widgets
       ref: 09e756b1f1b04e6298318d99ec20a787fb360f59
       path: packages/scrollable_positioned_list
   flutter_reorderable_grid_view: ^5.4.0
-  uuid: ^4.5.1
+  uuid: ^4.6.0
   desktop_webview_window:
     git:
       url: https://github.com/venera-app/flutter_desktop_webview
@@ -63,7 +63,7 @@ dependencies:
     git:
       url: https://github.com/venera-app/webdav_client
       ref: 2f669c98fb81cff1c64fee93466a1475c77e4273
-  battery_plus: ^7.0.0
+  battery_plus: ^7.1.1
   local_auth: ^3.0.2
   flutter_saf:
     git:
@@ -84,8 +84,8 @@ dependencies:
   enough_convert: ^1.6.0
   display_mode: ^0.0.2
   flutter_staggered_grid_view: ^0.7.0
-  archive: ^4.0.7
-  image: ^4.8.0
+  archive: ^4.1.0
+  image: ^4.9.2
   pdfrx: ^2.4.7
   xml: ^6.6.1
 
