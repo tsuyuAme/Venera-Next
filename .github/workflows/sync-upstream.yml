@@ -1,0 +1,48 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 每天 UTC 16:00 ≈ 北京时间 00:00
+    - cron: '0 16 * * *'
+  workflow_dispatch:  # Actions 页面可手动运行
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch and merge upstream
+        run: |
+          git remote add upstream https://github.com/CyrilPeng/Venera-Next.git 2>/dev/null || true
+          git fetch upstream
+
+          git checkout main
+          git reset --hard origin/main
+
+          # 已与上游一致则跳过
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream/main."
+            exit 0
+          fi
+
+          if git merge upstream/main --no-edit; then
+            git push origin main
+            echo "Synced upstream/main into main."
+          else
+            echo "::error::Merge conflict with upstream. Resolve locally, then push."
+            git merge --abort || true
+            exit 1
+          fi
