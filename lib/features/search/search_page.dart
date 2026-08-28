@@ -164,6 +164,13 @@ class _SearchPageState extends State<SearchPage> {
     controller = SearchBarController(onSearch: search);
     appdata.settings.addListener(updateSearchSourcesIfNeeded);
     super.initState();
+    
+    // 进入搜索页后自动聚焦搜索框
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        focusNode.requestFocus();
+      }
+    });
   }
 
   @override
