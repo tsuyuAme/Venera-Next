@@ -15,6 +15,18 @@ import 'package:venera_next/foundation/widget_utils.dart';
 import 'search_filter.dart';
 import 'search_page.dart';
 
+/// Only sources that opt in (currently ehentai) show the date-seek control.
+bool sourceSupportsDateSeek(String sourceKey) {
+  return sourceKey == 'ehentai';
+}
+
+String formatDateSeek(DateTime d) {
+  final y = d.year.toString().padLeft(4, '0');
+  final m = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '$y-$m-$day';
+}
+
 class SearchResultPage extends StatefulWidget {
   const SearchResultPage({
     super.key,
@@ -41,6 +53,11 @@ class _SearchResultPageState extends State<SearchResultPage> {
   late List<String> options;
 
   late String text;
+
+  /// yyyy-MM-dd for EH seek=; null means no seek.
+  String? dateSeek;
+
+  final comicListKey = GlobalKey<ComicListState>();
 
   OverlayEntry? get suggestionOverlay => suggestionsController.entry;
 
@@ -135,7 +152,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
   Widget build(BuildContext context) {
     var source = ComicSource.find(sourceKey);
     return ComicList(
-      key: Key(text + options.toString() + sourceKey),
+      key: comicListKey,
       errorLeading: AppSearchBar(controller: controller, action: buildAction()),
       leadingSliver: SliverSearchBar(
         controller: controller,
@@ -149,18 +166,52 @@ class _SearchResultPageState extends State<SearchResultPage> {
             },
       loadNext: source.searchPageData!.loadNext == null
           ? null
-          : (i) {
-              return source.searchPageData!.loadNext!(text, i, options);
+          : (next) {
+              var token = next;
+              if (token == null && dateSeek != null) {
+                token = '__seek__:$dateSeek';
+              }
+              return source.searchPageData!.loadNext!(text, token, options);
             },
     );
   }
 
+  Future<void> _pickSeekDate() async {
+    final now = DateTime.now();
+    final initial = dateSeek != null
+        ? DateTime.tryParse(dateSeek!) ?? now
+        : now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(now) ? now : initial,
+      firstDate: DateTime(2007),
+      lastDate: now,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      dateSeek = formatDateSeek(picked);
+    });
+    // Restart list from the chosen date
+    comicListKey.currentState?.refresh();
+  }
+
   Widget buildAction() {
-    return Tooltip(
-      message: "Settings".tl,
-      child: IconButton(
-        icon: const Icon(Icons.tune),
-        onPressed: () async {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (sourceSupportsDateSeek(sourceKey))
+          Tooltip(
+            message: "Jump to page".tl,
+            child: IconButton(
+              icon: const Icon(Icons.calendar_month),
+              onPressed: _pickSeekDate,
+            ),
+          ),
+        Tooltip(
+          message: "Settings".tl,
+          child: IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: () async {
           if (suggestionOverlay != null) {
             suggestionsController.remove();
           }
@@ -180,8 +231,10 @@ class _SearchResultPageState extends State<SearchResultPage> {
             controller.currentText = text;
             setState(() {});
           }
-        },
-      ),
+            },
+          ),
+        ),
+      ],
     );
   }
 }
