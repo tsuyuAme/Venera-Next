@@ -20,6 +20,16 @@ import 'package:venera_next/foundation/translations.dart';
 import 'package:venera_next/foundation/widget_utils.dart';
 import 'package:venera_next/network/cache.dart';
 
+
+bool _sourceSupportsDateSeek(String sourceKey) => sourceKey == 'ehentai';
+
+String _formatDateSeek(DateTime d) {
+  final y = d.year.toString().padLeft(4, '0');
+  final m = d.month.toString().padLeft(2, '0');
+  final day = d.day.toString().padLeft(2, '0');
+  return '$y-$m-$day';
+}
+
 Future<bool> _deleteComic(
   String cid,
   String? fid,
@@ -110,6 +120,27 @@ class _NormalFavoritePage extends StatefulWidget {
 class _NormalFavoritePageState extends State<_NormalFavoritePage> {
   final comicListKey = GlobalKey<ComicListState>();
 
+  String? dateSeek;
+
+  Future<void> _pickSeekDate() async {
+    if (!_sourceSupportsDateSeek(widget.data.key)) return;
+    final now = DateTime.now();
+    final initial =
+        dateSeek != null ? (DateTime.tryParse(dateSeek!) ?? now) : now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(now) ? now : initial,
+      firstDate: DateTime(2007),
+      lastDate: now,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      dateSeek = _formatDateSeek(picked);
+    });
+    NetworkCacheManager().clear();
+    comicListKey.currentState?.refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ComicList(
@@ -136,6 +167,14 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
         ),
         actions: [
           const FavoriteDisplayButton(),
+          if (_sourceSupportsDateSeek(widget.data.key))
+            Tooltip(
+              message: "Jump to page".tl,
+              child: IconButton(
+                icon: const Icon(Icons.calendar_month),
+                onPressed: _pickSeekDate,
+              ),
+            ),
           Tooltip(
             message: "Refresh".tl,
             child: IconButton(
@@ -183,7 +222,13 @@ class _NormalFavoritePageState extends State<_NormalFavoritePage> {
           : (i) => widget.data.loadComic!(i),
       loadNext: widget.data.loadNext == null
           ? null
-          : (next) => widget.data.loadNext!(next),
+          : (next) {
+              var token = next;
+              if (token == null && dateSeek != null) {
+                token = '__seek__:$dateSeek';
+              }
+              return widget.data.loadNext!(token);
+            },
       menuBuilder: (comic) {
         return [
           MenuEntry(
@@ -559,8 +604,8 @@ class _CreateFolderDialogState extends State<_CreateFolderDialog> {
   }
 }
 
-class _FavoriteFolder extends StatelessWidget {
-  _FavoriteFolder(this.data, this.folderID, this.title);
+class _FavoriteFolder extends StatefulWidget {
+  const _FavoriteFolder(this.data, this.folderID, this.title);
 
   final FavoriteData data;
 
@@ -568,7 +613,33 @@ class _FavoriteFolder extends StatelessWidget {
 
   final String title;
 
+  @override
+  State<_FavoriteFolder> createState() => _FavoriteFolderState();
+}
+
+class _FavoriteFolderState extends State<_FavoriteFolder> {
   final comicListKey = GlobalKey<ComicListState>();
+
+  String? dateSeek;
+
+  Future<void> _pickSeekDate() async {
+    if (!_sourceSupportsDateSeek(widget.data.key)) return;
+    final now = DateTime.now();
+    final initial =
+        dateSeek != null ? (DateTime.tryParse(dateSeek!) ?? now) : now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isAfter(now) ? now : initial,
+      firstDate: DateTime(2007),
+      lastDate: now,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      dateSeek = _formatDateSeek(picked);
+    });
+    NetworkCacheManager().clear();
+    comicListKey.currentState?.refresh();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -576,29 +647,48 @@ class _FavoriteFolder extends StatelessWidget {
       key: comicListKey,
       enablePageStorage: true,
       leadingSliver: SliverAppbar(
-        title: Text(title),
+        title: Text(widget.title),
         actions: [
           const FavoriteDisplayButton(),
+          if (_sourceSupportsDateSeek(widget.data.key))
+            Tooltip(
+              message: "Jump to page".tl,
+              child: IconButton(
+                icon: const Icon(Icons.calendar_month),
+                onPressed: _pickSeekDate,
+              ),
+            ),
           MenuButton(
             entries: [
               MenuEntry(
                 icon: Icons.sync,
                 text: "Convert to local".tl,
                 onClick: () {
-                  importNetworkFolder(data.key, 9999999, title, folderID);
+                  importNetworkFolder(
+                    widget.data.key,
+                    9999999,
+                    widget.title,
+                    widget.folderID,
+                  );
                 },
               ),
             ],
           ),
         ],
       ),
-      errorLeading: Appbar(title: Text(title)),
-      loadPage: data.loadComic == null
+      errorLeading: Appbar(title: Text(widget.title)),
+      loadPage: widget.data.loadComic == null
           ? null
-          : (i) => data.loadComic!(i, folderID),
-      loadNext: data.loadNext == null
+          : (i) => widget.data.loadComic!(i, widget.folderID),
+      loadNext: widget.data.loadNext == null
           ? null
-          : (next) => data.loadNext!(next, folderID),
+          : (next) {
+              var token = next;
+              if (token == null && dateSeek != null) {
+                token = '__seek__:$dateSeek';
+              }
+              return widget.data.loadNext!(token, widget.folderID);
+            },
       menuBuilder: (comic) {
         return [
           MenuEntry(
@@ -622,3 +712,4 @@ class _FavoriteFolder extends StatelessWidget {
     );
   }
 }
+
