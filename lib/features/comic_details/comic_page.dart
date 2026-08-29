@@ -178,7 +178,7 @@ class _ComicPageState extends LoadingState<ComicPage, ComicDetails>
                           style: ts.s18,
                         )
                       else
-                        Text("Unknown".tl, style: ts.s18),
+                        Text(widget.id, style: ts.s18),
                       const SizedBox(height: 8),
                       Text(
                         widget.sourceKey,
@@ -1086,3 +1086,57 @@ class _ComicPageLoadingPlaceHolder extends StatelessWidget {
     );
   }
 }
+
+
+class _ErrorPageCover extends StatelessWidget {
+  const _ErrorPageCover({
+    this.cover,
+    required this.sourceKey,
+    required this.cid,
+    this.heroID,
+  });
+
+  final String? cover;
+  final String sourceKey;
+  final String cid;
+  final int? heroID;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+    if (cover?.trim().isNotEmpty == true) {
+      child = AnimatedImage(
+        image: CachedImageProvider(cover!, sourceKey: sourceKey, cid: cid),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+      );
+    } else {
+      child = const SizedBox();
+    }
+
+    final box = Container(
+      decoration: BoxDecoration(
+        color: context.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: context.colorScheme.outlineVariant,
+            blurRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      height: 144,
+      width: 144 * 0.72,
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+
+    if (heroID != null) {
+      return Hero(tag: "cover$heroID", child: box);
+    }
+    return box;
+  }
+}
+
