@@ -854,6 +854,79 @@ class LocalFavoritesManager with ChangeNotifier {
     return true;
   }
 
+
+  /// Batch-add comics in one transaction. Notifies listeners once at the end.
+  /// Returns the number of newly inserted rows.
+  int addComicsBatch(String folder, List<FavoriteItem> comics) {
+    if (comics.isEmpty) {
+      return 0;
+    }
+    if (!existsFolder(folder)) {
+      throw Exception("Folder does not exists");
+    }
+
+    final addToEnd = appdata.settings['newFavoriteAddTo'] == "end";
+    var displayOrder = addToEnd ? maxValue(folder) + 1 : minValue(folder) - 1;
+    var inserted = 0;
+
+    _db.execute("BEGIN TRANSACTION");
+    try {
+      for (final comic in comics) {
+        final exists = _db.select(
+          """
+          select 1 from "$folder"
+          where id == ? and type == ?
+          limit 1;
+        """,
+          [comic.id, comic.type.value],
+        );
+        if (exists.isNotEmpty) {
+          continue;
+        }
+        final translatedTags = _translateTags(comic.tags);
+        _db.execute(
+          """
+          insert into "$folder" (id, name, author, type, tags, cover_path, time, translated_tags, display_order)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """,
+          [
+            comic.id,
+            comic.name,
+            comic.author,
+            comic.type.value,
+            comic.tags.join(","),
+            comic.coverPath,
+            comic.time,
+            translatedTags,
+            displayOrder,
+          ],
+        );
+        if (addToEnd) {
+          displayOrder++;
+        } else {
+          displayOrder--;
+        }
+        inserted++;
+        final hash = comic.id.hashCode ^ comic.type.value;
+        _hashedIds[hash] = (_hashedIds[hash] ?? 0) + 1;
+      }
+    } catch (e, s) {
+      Log.error("Batch Add Comics", e.toString(), s);
+      _db.execute("ROLLBACK");
+      rethrow;
+    }
+    _db.execute("COMMIT");
+
+    if (inserted > 0) {
+      counts[folder] = (counts[folder] ?? count(folder));
+      // recount is safer after bulk insert
+      counts[folder] = count(folder);
+      _syncFollowUpdatesIfAffected([folder]);
+      notifyListeners();
+    }
+    return inserted;
+  }
+
   void moveFavorite(
     String sourceFolder,
     String targetFolder,
