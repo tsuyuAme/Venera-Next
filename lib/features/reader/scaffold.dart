@@ -159,6 +159,15 @@ class ReaderScaffoldState extends State<ReaderScaffold> {
     _applySystemUiMode();
   }
 
+  /// 切章后自动隐藏顶栏/底栏
+  void close() {
+    if (!_isOpen) return;
+    setState(() {
+      _isOpen = false;
+    });
+    _applySystemUiMode();
+  }
+
   bool? rotation;
 
   void update() {
