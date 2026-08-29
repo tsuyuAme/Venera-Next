@@ -7,6 +7,7 @@ import 'package:venera_next/components/menu.dart';
 import 'package:venera_next/features/comic_source/comic_source.dart';
 import 'package:venera_next/foundation/appdata.dart';
 import 'package:venera_next/foundation/context.dart';
+import 'package:venera_next/features/search/artist_favorites_page.dart';
 import 'package:venera_next/foundation/translations.dart';
 import 'package:venera_next/foundation/widget_utils.dart';
 import 'package:venera_next/routing/page_jump_target.dart';
@@ -211,6 +212,12 @@ class _SearchShortcutsSliverState extends State<SearchShortcutsSliver> {
     if (mounted) setState(() {});
   }
 
+  /// Max rows shown on the search page (mobile-friendly); rest via "View more".
+  static const int _previewLimit = 5;
+
+  bool _sectionExpanded = true;
+  bool _tagsExpanded = false;
+
   @override
   Widget build(BuildContext context) {
     final shortcuts = manager.all;
@@ -224,20 +231,61 @@ class _SearchShortcutsSliverState extends State<SearchShortcutsSliver> {
     final tags = shortcuts
         .where((shortcut) => !shortcut.isAuthor)
         .toList(growable: false);
+
+    final previewAuthors = authors.take(_previewLimit).toList(growable: false);
+    final visibleTags =
+        _tagsExpanded ? tags : tags.take(_previewLimit).toList(growable: false);
+    final moreAuthors = authors.length > _previewLimit;
+    final moreTags = !_tagsExpanded && tags.length > _previewLimit;
+
     final children = <Widget>[
-      const SizedBox(height: 16),
+      const SizedBox(height: 8),
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.bookmarks_outlined),
         title: Text('Search shortcuts'.tl),
+        subtitle: Text('${shortcuts.length}'),
+        trailing: Icon(
+          _sectionExpanded ? Icons.expand_less : Icons.expand_more,
+        ),
+        onTap: () {
+          setState(() {
+            _sectionExpanded = !_sectionExpanded;
+          });
+        },
       ),
-      if (authors.isNotEmpty) ...[
-        _buildSectionTitle('Favorite authors'.tl),
-        for (final shortcut in authors) _buildItem(context, shortcut),
-      ],
-      if (tags.isNotEmpty) ...[
-        _buildSectionTitle('Saved tag searches'.tl),
-        for (final shortcut in tags) _buildItem(context, shortcut),
+      if (_sectionExpanded) ...[
+        if (authors.isNotEmpty) ...[
+          _buildSectionTitle('Favorite authors'.tl),
+          for (final shortcut in previewAuthors) _buildItem(context, shortcut),
+          if (moreAuthors)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text('View more'.tl),
+              subtitle: Text('${authors.length}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                context.to(() => const ArtistFavoritesPage());
+              },
+            ),
+        ],
+        if (tags.isNotEmpty) ...[
+          _buildSectionTitle('Saved tag searches'.tl),
+          for (final shortcut in visibleTags) _buildItem(context, shortcut),
+          if (moreTags)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text('View more'.tl),
+              trailing: Text('+${tags.length - _previewLimit}'),
+              onTap: () {
+                setState(() {
+                  _tagsExpanded = true;
+                });
+              },
+            ),
+        ],
       ],
     ];
     return SliverList(
