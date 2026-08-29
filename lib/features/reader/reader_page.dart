@@ -80,6 +80,18 @@ class ReaderState extends State<Reader>
     setState(() {});
   }
 
+  @override
+  void onChapterChanged() {
+    if (!mounted) return;
+    // 下一帧再关，避免和 setState 抢同一帧
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (context.readerScaffold.isOpen) {
+        context.readerScaffold.close();
+      }
+    });
+  }
+
   /// The maximum page number for images only (excluding chapter comments page).
   /// This is used for display purposes and history recording.
   @override
@@ -647,6 +659,9 @@ abstract mixin class ReaderLocation {
 
   void update();
 
+  /// 章节切换成功后调用（用于隐藏阅读器工具栏等）
+  void onChapterChanged() {}
+
   bool enablePageAnimation(String cid, ComicType type) => appdata.settings
       .getReaderSetting(cid, type.sourceKey, 'enablePageAnimation');
 
@@ -725,12 +740,14 @@ abstract mixin class ReaderLocation {
   bool toChapter(int c, {bool toLastPage = false}) {
     if (_validateChapter(c) && !isLoading) {
       if (imageViewController?.toChapter(c, toLastPage: toLastPage) ?? false) {
+        onChapterChanged();
         return true;
       }
       chapter = c;
       page = 1;
       jumpToLastPageOnLoad = toLastPage;
       update();
+      onChapterChanged();
       return true;
     }
     return false;
