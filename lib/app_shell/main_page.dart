@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:venera_next/features/discovery/discovery.dart';
 import 'package:venera_next/features/favorites/favorites.dart';
 import 'package:venera_next/features/search/search.dart';
+import 'package:venera_next/features/search/search_tab.dart';
 import 'package:venera_next/features/settings/settings.dart';
 import 'package:venera_next/foundation/appdata.dart';
 import 'package:venera_next/foundation/translations.dart';
@@ -23,6 +24,11 @@ class _MainPageState extends State<MainPage> {
 
   GlobalKey<NavigatorState>? _navigatorKey;
 
+  /// Index of the Search tab in [_pages] / paneItems.
+  static const int searchTabIndex = 1;
+
+  final GlobalKey<SearchTabState> _searchTabKey = GlobalKey<SearchTabState>();
+
   void to(Widget Function() widget, {bool preventDuplicate = false}) async {
     if (preventDuplicate) {
       var page = widget();
@@ -35,17 +41,30 @@ class _MainPageState extends State<MainPage> {
     _navigatorKey!.currentContext!.pop();
   }
 
+  /// Switch to Search tab (keeps previous result stack).
+  void openSearchTab({bool popToRoot = false}) {
+    final navi = NaviPane.of(context);
+    navi.updatePage(searchTabIndex);
+    if (popToRoot) {
+      _searchTabKey.currentState?.popToRoot();
+    }
+  }
+
   @override
   void initState() {
     _observer = NaviObserver();
     _navigatorKey = GlobalKey();
     App.mainNavigatorKey = _navigatorKey;
     index = int.tryParse(appdata.settings['initialPage'].toString()) ?? 0;
+    if (index < 0 || index > 4) {
+      index = 0;
+    }
     super.initState();
   }
 
-  final _pages = [
+  late final List<Widget> _pages = [
     const HomePage(),
+    SearchTab(key: _searchTabKey),
     const FavoritesPage(key: PageStorageKey('favorites')),
     const ExplorePage(key: PageStorageKey('explore')),
     const CategoriesPage(key: PageStorageKey('categories')),
@@ -64,6 +83,11 @@ class _MainPageState extends State<MainPage> {
           label: 'Home'.tl,
           icon: Icons.home_outlined,
           activeIcon: Icons.home,
+        ),
+        PaneItemEntry(
+          label: 'Search'.tl,
+          icon: Icons.search_outlined,
+          activeIcon: Icons.search,
         ),
         PaneItemEntry(
           label: 'Favorites'.tl,
@@ -87,14 +111,6 @@ class _MainPageState extends State<MainPage> {
         });
       },
       paneActions: [
-        if (index != 0)
-          PaneActionEntry(
-            icon: Icons.search,
-            label: "Search".tl,
-            onTap: () {
-              to(() => const SearchPage(), preventDuplicate: true);
-            },
-          ),
         PaneActionEntry(
           icon: Icons.settings,
           label: "Settings".tl,
@@ -103,8 +119,14 @@ class _MainPageState extends State<MainPage> {
           },
         ),
       ],
-      pageBuilder: (index) {
-        return _pages[index];
+      pageBuilder: (pageIndex) {
+        // Keep all primary tabs alive so Search (and its nested result stack)
+        // survive switching to Home / Favorites / Explore / Categories.
+        return IndexedStack(
+          index: pageIndex,
+          sizing: StackFit.expand,
+          children: _pages,
+        );
       },
     );
   }
