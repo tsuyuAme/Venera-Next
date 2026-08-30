@@ -75,6 +75,11 @@ class ReaderState extends State<Reader>
         ReaderVolumeListener,
         ReaderImagePerPageHandler,
         WidgetsBindingObserver {
+  /// Scaffold is a *descendant* (inside Overlay), not an ancestor — cannot use
+  /// [findAncestorStateOfType]. Keep an explicit key to close bars on chapter change.
+  final GlobalKey<ReaderScaffoldState> scaffoldKey =
+      GlobalKey<ReaderScaffoldState>();
+
   @override
   void update() {
     setState(() {});
@@ -83,12 +88,10 @@ class ReaderState extends State<Reader>
   @override
   void onChapterChanged() {
     if (!mounted) return;
-    // 下一帧再关，避免和 setState 抢同一帧
+    // Next frame: avoid racing chapter setState / list rebuild.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (context.readerScaffold.isOpen) {
-        context.readerScaffold.close();
-      }
+      scaffoldKey.currentState?.close();
     });
   }
 
@@ -322,6 +325,7 @@ class ReaderState extends State<Reader>
           OverlayEntry(
             builder: (context) {
               return ReaderScaffold(
+                key: scaffoldKey,
                 child: ReaderGestureDetector(
                   child: ReaderImages(
                     key: Key(mode.isWaterfall ? mode.key : chapter.toString()),

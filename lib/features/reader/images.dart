@@ -945,6 +945,10 @@ class ContinuousModeState extends State<_ContinuousMode>
     if (chapterChanged || reader.page != imageRef.page) {
       reader.setPage(imageRef.page);
     }
+    if (chapterChanged) {
+      // Continuous / waterfall: chapter changes without toChapter().
+      reader.onChapterChanged();
+    }
   }
 
   int? _waterfallIndexOfChapterPage(int chapter, int page) {
