@@ -71,9 +71,17 @@ class _SearchResultPageState extends State<SearchResultPage> {
       text = _applyConfiguredLanguageFilter(text);
       setState(() {
         this.text = text!;
+        // New keyword search should not keep previous date seek
+        dateSeek = null;
       });
       appdata.addSearchHistory(text);
       controller.currentText = text;
+      // ComicList is keyed by GlobalKey (for seek refresh), so its State is
+      // preserved across setState — must explicitly reload for new keyword.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        comicListKey.currentState?.refresh();
+      });
     }
   }
 
@@ -229,7 +237,12 @@ class _SearchResultPageState extends State<SearchResultPage> {
               previousSourceKey != sourceKey) {
             text = _applyConfiguredLanguageFilter(controller.text);
             controller.currentText = text;
+            dateSeek = null;
             setState(() {});
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              comicListKey.currentState?.refresh();
+            });
           }
             },
           ),
