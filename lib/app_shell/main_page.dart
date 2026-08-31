@@ -59,6 +59,7 @@ class _MainPageState extends State<MainPage> {
     if (index < 0 || index > 4) {
       index = 0;
     }
+    App.secondaryNavigatorActive = index == searchTabIndex;
     super.initState();
   }
 
@@ -109,6 +110,8 @@ class _MainPageState extends State<MainPage> {
         setState(() {
           index = i;
         });
+        // Mouse back / Esc only pops Search nested stack while on Search tab
+        App.secondaryNavigatorActive = i == searchTabIndex;
       },
       paneActions: [
         PaneActionEntry(
