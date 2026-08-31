@@ -54,6 +54,13 @@ class _App {
 
   GlobalKey<NavigatorState>? mainNavigatorKey;
 
+  /// Nested tab navigators (e.g. Search tab). Only used when [secondaryNavigatorActive].
+  GlobalKey<NavigatorState>? secondaryNavigatorKey;
+
+  /// Set true while the tab that owns [secondaryNavigatorKey] is visible.
+  /// Prevents mouse-back on Home from popping Search's result stack.
+  bool secondaryNavigatorActive = false;
+
   BuildContext get rootContext => rootNavigatorKey.currentContext!;
 
   final Appdata data = appdata;
@@ -71,9 +78,19 @@ class _App {
   }
 
   void pop() {
+    // Dialogs / overlays on root first
     if (rootNavigatorKey.currentState?.canPop() ?? false) {
       rootNavigatorKey.currentState?.pop();
-    } else if (mainNavigatorKey?.currentState?.canPop() ?? false) {
+      return;
+    }
+    // Search (or other) nested stack while that tab is selected
+    if (secondaryNavigatorActive &&
+        (secondaryNavigatorKey?.currentState?.canPop() ?? false)) {
+      secondaryNavigatorKey!.currentState!.pop();
+      return;
+    }
+    // Main shell routes (settings, etc.)
+    if (mainNavigatorKey?.currentState?.canPop() ?? false) {
       mainNavigatorKey?.currentState?.pop();
     }
   }
