@@ -94,8 +94,8 @@ class _Tag {
     }
     var recognizer = s.recognizer;
     if (name == 'a') {
-      var link = attributes['href'];
-      if (link != null && link.isURL) {
+      var link = resolveHref(attributes['href']);
+      if (link != null) {
         recognizer = TapGestureRecognizer()
           ..onTap = () {
             handleLink(link);
@@ -105,13 +105,37 @@ class _Tag {
     return TextSpan(text: s.text, style: style, recognizer: recognizer);
   }
 
+  /// Turn EH-style relative / protocol-relative hrefs into absolute https URLs.
+  static String? resolveHref(String? href) {
+    if (href == null) return null;
+    var link = href.trim();
+    if (link.isEmpty || link.startsWith('#') || link.toLowerCase().startsWith('javascript:')) {
+      return null;
+    }
+    if (link.startsWith('//')) {
+      link = 'https:$link';
+    } else if (link.startsWith('/')) {
+      // Gallery / image paths on EH
+      link = 'https://e-hentai.org$link';
+    }
+    if (link.isURL) return link;
+    // Fallback: allow gallery URLs that barely fail the strict isURL regex
+    if (RegExp(r'^https?://(e-|ex)hentai\.org/', caseSensitive: false).hasMatch(link)) {
+      return link;
+    }
+    return null;
+  }
+
   static void handleLink(String link) async {
-    if (link.isURL) {
-      if (await handleAppLink(Uri.parse(link))) {
-        Navigator.of(App.rootContext).maybePop();
-      } else {
-        launchUrlString(link);
-      }
+    final resolved = resolveHref(link) ?? (link.isURL ? link : null);
+    if (resolved == null) return;
+    if (await handleAppLink(Uri.parse(resolved))) {
+      // Close comments sheet / dialog if open
+      Navigator.of(App.rootContext).maybePop();
+    } else {
+      try {
+        await launchUrlString(resolved);
+      } catch (_) {}
     }
   }
 }
@@ -128,11 +152,16 @@ class RichCommentContent extends StatefulWidget {
     super.key,
     required this.text,
     this.showImages = true,
+    this.selectable = true,
   });
 
   final String text;
 
   final bool showImages;
+
+  /// Prefer false inside horizontal lists so link taps are not stolen by
+  /// [SelectableText] / parent scroll gesture arenas.
+  final bool selectable;
 
   @override
   State<RichCommentContent> createState() => _RichCommentContentState();
@@ -283,9 +312,13 @@ class _RichCommentContentState extends State<RichCommentContent> {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = SelectableText.rich(
-      TextSpan(style: DefaultTextStyle.of(context).style, children: textSpan),
+    final span = TextSpan(
+      style: DefaultTextStyle.of(context).style,
+      children: textSpan,
     );
+    Widget content = widget.selectable
+        ? SelectableText.rich(span)
+        : Text.rich(span);
     if (images.isNotEmpty && widget.showImages) {
       content = Column(
         mainAxisSize: MainAxisSize.min,
