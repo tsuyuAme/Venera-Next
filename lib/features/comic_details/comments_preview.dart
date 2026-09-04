@@ -48,7 +48,7 @@ class _ComicCommentsPreviewState extends State<ComicCommentsPreview> {
   /// Desktop: jump ~3 cards; phone: ~2 (fits a typical width without overshooting).
   int _stepCount(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
-    if (w >= 900) return 4;
+    if (w >= 900) return 3;
     if (w >= 600) return 2;
     return 2;
   }
