@@ -30,10 +30,42 @@ class _ComicCommentsPreviewState extends State<ComicCommentsPreview> {
 
   late List<Comment> comments;
 
+  /// One comment card is width 324 + left margin 16.
+  static const double _itemExtent = 340;
+
   @override
   void initState() {
     comments = widget.comments.where((c) => !shouldBlockComment(c)).toList();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  /// Desktop: jump ~3 cards; phone: ~2 (fits a typical width without overshooting).
+  int _stepCount(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    if (w >= 900) return 4;
+    if (w >= 600) return 2;
+    return 2;
+  }
+
+  void _scrollBy(int direction) {
+    if (!scrollController.hasClients) return;
+    final step = _itemExtent * _stepCount(context);
+    final pos = scrollController.position;
+    final target = (pos.pixels + direction * step).clamp(
+      pos.minScrollExtent,
+      pos.maxScrollExtent,
+    );
+    scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -48,23 +80,11 @@ class _ComicCommentsPreviewState extends State<ComicCommentsPreview> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    scrollController.animateTo(
-                      scrollController.position.pixels - 340,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.ease,
-                    );
-                  },
+                  onPressed: () => _scrollBy(-1),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    scrollController.animateTo(
-                      scrollController.position.pixels + 340,
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.ease,
-                    );
-                  },
+                  onPressed: () => _scrollBy(1),
                 ),
               ],
             ),
@@ -150,6 +170,8 @@ class _CommentWidget extends StatelessWidget {
             child: RichCommentContent(
               text: comment.content,
               showImages: false,
+              // Horizontal list: SelectableText steals taps; use Text.rich links.
+              selectable: false,
             ).fixWidth(324),
           ),
           const SizedBox(height: 4),
