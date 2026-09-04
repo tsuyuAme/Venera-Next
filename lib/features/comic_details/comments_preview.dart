@@ -167,12 +167,19 @@ class _CommentWidget extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Expanded(
-            child: RichCommentContent(
-              text: comment.content,
-              showImages: false,
-              // Horizontal list: SelectableText steals taps; use Text.rich links.
-              selectable: false,
-            ).fixWidth(324),
+            child: SizedBox(
+              width: 324,
+              child: SingleChildScrollView(
+                // Long comments: restore vertical scroll inside the card
+                // (WidgetSpan links no longer use SelectableText).
+                physics: const ClampingScrollPhysics(),
+                child: RichCommentContent(
+                  text: comment.content,
+                  showImages: false,
+                  selectable: false,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 4),
           if (comment.time != null)
