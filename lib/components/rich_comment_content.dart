@@ -116,7 +116,7 @@ class _Tag {
       link = 'https:$link';
     } else if (link.startsWith('/')) {
       // Gallery / image paths on EH
-      link = 'https://e-hentai.org$link';
+      link = 'https://exhentai.org$link';
     }
     if (link.isURL) return link;
     // Fallback: allow gallery URLs that barely fail the strict isURL regex
