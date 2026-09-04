@@ -107,7 +107,7 @@ class _Tag {
     if (link.startsWith('//')) {
       link = 'https:$link';
     } else if (link.startsWith('/')) {
-      link = 'https://e-hentai.org$link';
+      link = 'https://exhentai.org$link';
     }
     if (link.isURL) return link;
     if (RegExp(
