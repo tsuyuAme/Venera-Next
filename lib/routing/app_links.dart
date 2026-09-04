@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:venera_next/foundation/app.dart';
 import 'package:venera_next/foundation/context.dart';
@@ -20,7 +21,15 @@ Future<bool> handleAppLink(Uri uri) async {
           if (App.mainNavigatorKey == null) {
             await Future.delayed(const Duration(milliseconds: 200));
           }
-          App.mainNavigatorKey!.currentContext?.to(() {
+          // Prefer Search-tab nested navigator when active, else main shell.
+          final ctx = (App.secondaryNavigatorActive
+                  ? App.secondaryNavigatorKey?.currentContext
+                  : null) ??
+              App.mainNavigatorKey?.currentContext;
+          if (ctx == null || !ctx.mounted) {
+            return false;
+          }
+          ctx.to(() {
             return ComicPage(id: id, sourceKey: source.key);
           });
           return true;
