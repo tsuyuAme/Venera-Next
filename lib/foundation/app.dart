@@ -83,15 +83,16 @@ class _App {
       rootNavigatorKey.currentState?.pop();
       return;
     }
+    // Main shell routes sit *above* tab content (settings, pages pushed
+    // without a tab context). Must pop these before nested tab navigators.
+    if (mainNavigatorKey?.currentState?.canPop() ?? false) {
+      mainNavigatorKey!.currentState!.pop();
+      return;
+    }
     // Search (or other) nested stack while that tab is selected
     if (secondaryNavigatorActive &&
         (secondaryNavigatorKey?.currentState?.canPop() ?? false)) {
       secondaryNavigatorKey!.currentState!.pop();
-      return;
-    }
-    // Main shell routes (settings, etc.)
-    if (mainNavigatorKey?.currentState?.canPop() ?? false) {
-      mainNavigatorKey?.currentState?.pop();
     }
   }
 
