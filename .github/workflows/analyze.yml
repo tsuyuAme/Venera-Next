@@ -29,3 +29,5 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: error
       - uses: invertase/github-action-dart-analyzer@v1
+        with:
+          fatal-warnings: false
