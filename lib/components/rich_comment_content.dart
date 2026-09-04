@@ -57,7 +57,6 @@ class _Tag {
               var value = kv[1].trim();
               switch (key) {
                 case 'color':
-                  // Color is not supported, we should make text display well in light and dark mode.
                   break;
                 case 'font-weight':
                   if (value == 'bold') {
@@ -79,7 +78,6 @@ class _Tag {
                   }
                   break;
                 case 'font-size':
-                  // Font size is not supported.
                   break;
               }
             }
@@ -92,51 +90,70 @@ class _Tag {
     if (style.color != null) {
       style = style.copyWith(decorationColor: style.color);
     }
-    var recognizer = s.recognizer;
-    if (name == 'a') {
-      var link = resolveHref(attributes['href']);
-      if (link != null) {
-        recognizer = TapGestureRecognizer()
-          ..onTap = () {
-            handleLink(link);
-          };
-      }
-    }
-    return TextSpan(text: s.text, style: style, recognizer: recognizer);
+    // Link taps are applied in writeBuffer via WidgetSpan — do not use
+    // TapGestureRecognizer here (unreliable inside horizontal ListViews).
+    return TextSpan(text: s.text, style: style);
   }
 
   /// Turn EH-style relative / protocol-relative hrefs into absolute https URLs.
   static String? resolveHref(String? href) {
     if (href == null) return null;
     var link = href.trim();
-    if (link.isEmpty || link.startsWith('#') || link.toLowerCase().startsWith('javascript:')) {
+    if (link.isEmpty ||
+        link.startsWith('#') ||
+        link.toLowerCase().startsWith('javascript:')) {
       return null;
     }
     if (link.startsWith('//')) {
       link = 'https:$link';
     } else if (link.startsWith('/')) {
-      // Gallery / image paths on EH
-      link = 'https://exhentai.org$link';
+      link = 'https://e-hentai.org$link';
     }
     if (link.isURL) return link;
-    // Fallback: allow gallery URLs that barely fail the strict isURL regex
-    if (RegExp(r'^https?://(e-|ex)hentai\.org/', caseSensitive: false).hasMatch(link)) {
+    if (RegExp(
+      r'^https?://(e-|ex)hentai\.org/',
+      caseSensitive: false,
+    ).hasMatch(link)) {
       return link;
     }
     return null;
   }
 
-  static void handleLink(String link) async {
+  static Future<void> handleLink(String link) async {
     final resolved = resolveHref(link) ?? (link.isURL ? link : null);
     if (resolved == null) return;
-    if (await handleAppLink(Uri.parse(resolved))) {
-      // Close comments sheet / dialog if open
+    final uri = Uri.tryParse(resolved);
+    if (uri == null) return;
+    if (await handleAppLink(uri)) {
+      // Close comments side sheet / dialog if one is open on root.
       Navigator.of(App.rootContext).maybePop();
-    } else {
-      try {
-        await launchUrlString(resolved);
-      } catch (_) {}
+      return;
     }
+    try {
+      await launchUrlString(resolved);
+    } catch (_) {}
+  }
+
+  /// Tappable link that wins against parent horizontal scroll gestures.
+  static InlineSpan linkSpan(String text, String url, TextStyle style) {
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          handleLink(url);
+        },
+        child: Text(
+          text,
+          style: style.copyWith(
+            color: style.color,
+            decoration: TextDecoration.underline,
+            decorationColor: style.color,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -182,7 +199,7 @@ class _RichCommentContentState extends State<RichCommentContent> {
   }
 
   bool isValidUrlChar(String char) {
-    return RegExp(r'[a-zA-Z0-9%:/.@\-_?&=#*!+;]').hasMatch(char);
+    return RegExp(r'[a-zA-Z0-9%:/.@\-_?&=#*!+;~]').hasMatch(char);
   }
 
   void render() {
@@ -193,77 +210,98 @@ class _RichCommentContentState extends State<RichCommentContent> {
     var text = widget.text;
     text = text.replaceAll('\r\n', '\n');
     text = text.replaceAll('&amp;', '&');
+    text = text.replaceAll('&lt;', '<');
+    text = text.replaceAll('&gt;', '>');
+    text = text.replaceAll('&quot;', '"');
 
     void writeBuffer() {
       if (buffer.isEmpty) return;
-      var span = TextSpan(text: buffer.toString());
+      final raw = buffer.toString();
+      buffer.clear();
+      var span = TextSpan(text: raw);
       for (var tag in s) {
         span = tag.merge(span, context);
       }
-      textSpan.add(span);
-      buffer.clear();
+      // If inside <a href=...>, emit a real GestureDetector (WidgetSpan).
+      String? anchorUrl;
+      for (final tag in s) {
+        if (tag.name == 'a') {
+          anchorUrl = _Tag.resolveHref(tag.attributes['href']);
+        }
+      }
+      if (anchorUrl != null) {
+        textSpan.add(
+          _Tag.linkSpan(
+            span.text ?? raw,
+            anchorUrl,
+            span.style ??
+                DefaultTextStyle.of(context).style.copyWith(
+                      color: context.colorScheme.primary,
+                    ),
+          ),
+        );
+      } else {
+        textSpan.add(span);
+      }
     }
 
     while (i < text.length) {
       if (text[i] == '<' && i != text.length - 1) {
         if (text[i + 1] != '/') {
-          // start tag
-          var j = text.indexOf('>', i);
-          if (j != -1) {
-            var tagContent = text.substring(i + 1, j);
-            var splits = tagContent.split(' ');
-            splits.removeWhere((element) => element.isEmpty);
-            var tagName = splits[0];
-            var attributes = <String, String>{};
-            for (var k = 1; k < splits.length; k++) {
-              var attr = splits[k];
-              var attrSplits = attr.split('=');
-              if (attrSplits.length == 2) {
-                attributes[attrSplits[0]] = attrSplits[1].replaceAll('"', '');
-              }
-            }
-            const acceptedTags = [
-              'img',
-              'a',
-              'b',
-              'i',
-              'u',
-              's',
-              'br',
-              'span',
-              'strong',
-            ];
-            if (acceptedTags.contains(tagName)) {
-              writeBuffer();
-              if (tagName == 'img') {
-                var url = attributes['src'];
-                String? link;
-                for (var tag in s) {
-                  if (tag.name == 'a') {
-                    link = tag.attributes['href'];
-                    break;
-                  }
-                }
-                if (url != null) {
-                  images.add(_CommentImage(url, link));
-                }
-              } else if (tagName == 'br') {
-                buffer.write('\n');
-              } else {
-                s.add(_Tag(tagName, attributes));
-              }
-              i = j + 1;
-              continue;
+          // open tag
+          var j = i + 1;
+          for (; j < text.length; j++) {
+            if (text[j] == '>') break;
+          }
+          if (j == text.length) {
+            buffer.write(text[i]);
+            i++;
+            continue;
+          }
+          var tagContent = text.substring(i + 1, j);
+          var splits = tagContent.split(' ');
+          var tagName = splits[0].toLowerCase();
+          var attributes = <String, String>{};
+          for (var k = 1; k < splits.length; k++) {
+            var attr = splits[k];
+            var kv = attr.split('=');
+            if (kv.length == 2) {
+              attributes[kv[0]] = kv[1].replaceAll('"', '').replaceAll("'", '');
             }
           }
+          if (tagName == 'br') {
+            writeBuffer();
+            buffer.write('\n');
+            i = j + 1;
+            continue;
+          }
+          if (tagName == 'img') {
+            writeBuffer();
+            var url = attributes['src'];
+            String? link;
+            if (s.isNotEmpty && s.last.name == 'a') {
+              link = s.last.attributes['href'];
+            }
+            if (url != null) {
+              images.add(_CommentImage(url, link));
+            }
+            i = j + 1;
+            continue;
+          }
+          writeBuffer();
+          s.add(_Tag(tagName, attributes));
+          i = j + 1;
+          continue;
         } else {
-          // end tag
-          var j = text.indexOf('>', i);
-          if (j != -1) {
+          // close tag
+          var j = i + 2;
+          for (; j < text.length; j++) {
+            if (text[j] == '>') break;
+          }
+          if (j != text.length) {
             var tagContent = text.substring(i + 2, j);
             var splits = tagContent.split(' ');
-            splits.removeWhere((element) => element.isEmpty);
-            var tagName = splits[0];
+            var tagName = splits[0].toLowerCase();
             if (s.isNotEmpty && s.last.name == tagName) {
               writeBuffer();
               s.removeLast();
@@ -278,26 +316,28 @@ class _RichCommentContentState extends State<RichCommentContent> {
           }
         }
       } else if (text.length - i > 8 &&
-          text.substring(i, i + 4) == 'http' &&
+          text.substring(i, i + 4).toLowerCase() == 'http' &&
           !s.any((e) => e.name == 'a')) {
-        // auto link
+        // auto link plain URLs
         int j = i;
         for (; j < text.length; j++) {
           if (!isValidUrlChar(text[j])) {
             break;
           }
         }
+        // trim trailing punctuation often glued onto URLs
+        while (j > i && '.,;:!?）)】》"\''.contains(text[j - 1])) {
+          j--;
+        }
         var url = text.substring(i, j);
-        if (url.isURL) {
+        final resolved = _Tag.resolveHref(url) ?? (url.isURL ? url : null);
+        if (resolved != null) {
           writeBuffer();
           textSpan.add(
-            TextSpan(
-              text: url,
-              style: ts.withColor(context.colorScheme.primary),
-              recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  _Tag.handleLink(url);
-                },
+            _Tag.linkSpan(
+              url,
+              resolved,
+              ts.withColor(context.colorScheme.primary),
             ),
           );
           i = j;
@@ -316,7 +356,14 @@ class _RichCommentContentState extends State<RichCommentContent> {
       style: DefaultTextStyle.of(context).style,
       children: textSpan,
     );
-    Widget content = widget.selectable
+    // WidgetSpan links do not work inside SelectableText — force Text.rich
+    // whenever we might have links (non-selectable path always; selectable
+    // only if no WidgetSpan children — we always use Text.rich for safety
+    // when selectable is false).
+    // SelectableText does not handle WidgetSpan taps; use Text.rich whenever
+    // any link WidgetSpan is present (typical for EH gallery URLs).
+    final hasLinkWidgets = textSpan.any((s) => s is WidgetSpan);
+    Widget content = (widget.selectable && !hasLinkWidgets)
         ? SelectableText.rich(span)
         : Text.rich(span);
     if (images.isNotEmpty && widget.showImages) {
