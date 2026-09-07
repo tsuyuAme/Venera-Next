@@ -124,9 +124,10 @@ class _Tag {
     if (resolved == null) return;
     final uri = Uri.tryParse(resolved);
     if (uri == null) return;
+    // Close comments sidebar(s) first so the new comic is not buried under them
+    // and so push targets the visible navigator stack.
+    closeRootOverlays();
     if (await handleAppLink(uri)) {
-      // Close comments side sheet / dialog if one is open on root.
-      Navigator.of(App.rootContext).maybePop();
       return;
     }
     try {
@@ -134,26 +135,42 @@ class _Tag {
     } catch (_) {}
   }
 
-  /// Tappable link that wins against parent horizontal scroll gestures.
-  static InlineSpan linkSpan(String text, String url, TextStyle style) {
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.baseline,
-      baseline: TextBaseline.alphabetic,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          handleLink(url);
-        },
-        child: Text(
-          text,
-          style: style.copyWith(
-            color: style.color,
-            decoration: TextDecoration.underline,
-            decorationColor: style.color,
-          ),
-        ),
-      ),
+  /// Tappable link.
+  ///
+  /// [useWidgetSpan] true (preview / horizontal list): GestureDetector wins
+  /// against scroll arenas. false (sidebar, selectable): TextSpan + recognizer
+  /// so SelectableText can still copy the comment body.
+  static InlineSpan linkSpan(
+    String text,
+    String url,
+    TextStyle style, {
+    bool useWidgetSpan = true,
+    List<TapGestureRecognizer>? recognizers,
+  }) {
+    final linkStyle = style.copyWith(
+      color: style.color,
+      decoration: TextDecoration.underline,
+      decorationColor: style.color,
     );
+    if (useWidgetSpan) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            handleLink(url);
+          },
+          child: Text(text, style: linkStyle),
+        ),
+      );
+    }
+    final recognizer = TapGestureRecognizer()
+      ..onTap = () {
+        handleLink(url);
+      };
+    recognizers?.add(recognizer);
+    return TextSpan(text: text, style: linkStyle, recognizer: recognizer);
   }
 }
 
@@ -188,6 +205,16 @@ class _RichCommentContentState extends State<RichCommentContent> {
   var textSpan = <InlineSpan>[];
   var images = <_CommentImage>[];
   bool isRendered = false;
+  final _linkRecognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final r in _linkRecognizers) {
+      r.dispose();
+    }
+    _linkRecognizers.clear();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -238,6 +265,8 @@ class _RichCommentContentState extends State<RichCommentContent> {
                 DefaultTextStyle.of(context).style.copyWith(
                       color: context.colorScheme.primary,
                     ),
+            useWidgetSpan: !widget.selectable,
+            recognizers: _linkRecognizers,
           ),
         );
       } else {
@@ -338,6 +367,8 @@ class _RichCommentContentState extends State<RichCommentContent> {
               url,
               resolved,
               ts.withColor(context.colorScheme.primary),
+              useWidgetSpan: !widget.selectable,
+              recognizers: _linkRecognizers,
             ),
           );
           i = j;
@@ -363,9 +394,13 @@ class _RichCommentContentState extends State<RichCommentContent> {
     // SelectableText does not handle WidgetSpan taps; use Text.rich whenever
     // any link WidgetSpan is present (typical for EH gallery URLs).
     final hasLinkWidgets = textSpan.any((s) => s is WidgetSpan);
+    // Sidebar (selectable): TextSpan links → SelectableText can copy.
+    // Preview (!selectable): WidgetSpan links → Text.rich only.
     Widget content = (widget.selectable && !hasLinkWidgets)
         ? SelectableText.rich(span)
-        : Text.rich(span);
+        : (widget.selectable
+            ? SelectionArea(child: Text.rich(span))
+            : Text.rich(span));
     if (images.isNotEmpty && widget.showImages) {
       content = Column(
         mainAxisSize: MainAxisSize.min,
