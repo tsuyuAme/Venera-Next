@@ -872,4 +872,7 @@ abstract interface class ReaderImageViewController {
   Future<Uint8List?> getImageByOffset(Offset offset);
 
   String? getImageKeyByOffset(Offset offset);
+
+  /// Reload the image under [offset] (clear cache + re-download).
+  Future<void> reloadImageByOffset(Offset offset);
 }

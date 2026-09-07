@@ -692,6 +692,21 @@ class GalleryModeState extends State<_GalleryMode>
 
     return reader.images![startIndex];
   }
+
+  @override
+  Future<void> reloadImageByOffset(Offset offset) async {
+    for (var imageState in imageStates) {
+      final state = imageState as ComicImageState;
+      if (state.containsPoint(offset)) {
+        await state.reload();
+        return;
+      }
+    }
+    // Fallback: reload first visible image state if hit-test missed
+    if (imageStates.isNotEmpty) {
+      await (imageStates.first as ComicImageState).reload();
+    }
+  }
 }
 
 const Set<PointerDeviceKind> _kTouchLikeDeviceTypes = <PointerDeviceKind>{
@@ -1693,6 +1708,21 @@ class ContinuousModeState extends State<_ContinuousMode>
       }
     }
     return imageKey;
+  }
+
+  @override
+  Future<void> reloadImageByOffset(Offset offset) async {
+    for (var imageState in imageStates) {
+      final state = imageState as ComicImageState;
+      if (state.containsPoint(offset)) {
+        await state.reload();
+        return;
+      }
+    }
+    // Fallback: reload first visible image state if hit-test missed
+    if (imageStates.isNotEmpty) {
+      await (imageStates.first as ComicImageState).reload();
+    }
   }
 }
 

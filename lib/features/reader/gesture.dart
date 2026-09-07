@@ -341,6 +341,12 @@ class ReaderGestureDetectorState
           text: "Save Image".tl,
           onClick: () => saveImage(location),
         ),
+      if (!reader.isLoading)
+        MenuEntry(
+          icon: Icons.refresh,
+          text: "Reload Image".tl,
+          onClick: () => reloadImage(location),
+        ),
     ]);
   }
 
@@ -383,6 +389,22 @@ class ReaderGestureDetectorState
       context.showMessage(message: "No Image".tl);
     }
   }
+
+  void reloadImage(Offset location) async {
+    final controller = reader.imageViewController;
+    if (controller == null) {
+      context.showMessage(message: "No Image".tl);
+      return;
+    }
+    try {
+      await controller.reloadImageByOffset(location);
+    } catch (e) {
+      if (context.mounted) {
+        context.showMessage(message: e.toString());
+      }
+    }
+  }
+
 }
 
 class ReaderDragListener {
