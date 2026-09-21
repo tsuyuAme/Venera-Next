@@ -58,7 +58,7 @@ comic_directory
 
 The file name can be anything, but the extension must be a valid image extension.
 
-The page order is determined by the file name. App will sort the files by name and display them in that order.
+Pages use natural filename order, such as `page_1.jpg`, `page_2.jpg`, `page_10.jpg`. Multiple numeric segments, leading zeros and mixed-case filenames are supported.
 
 Cover image is optional. 
 If there is a file named `cover.[ext]` in the directory, it will be considered as the cover image.
@@ -105,6 +105,11 @@ import; the original document is not streamed by the reader.
 
 ### PDF
 
+- Open `Local` -> `Import` -> `PDF comic files` to select one or more PDFs. Each file becomes a separate comic, and the destination favorites folder is selected once for the batch.
+- Files are converted sequentially. Progress includes the current file, its position in the batch, and its page count, so there is no need to select each volume separately.
+- Each successful comic is saved immediately. Duplicate selections and titles already in the local library are skipped. A damaged, password-protected, or unreadable file does not stop the remaining files; individual results are shown at the end.
+- Cancelling stops subsequent imports and cleans up the unfinished comic after the current file preparation or page operation finishes safely. Successfully imported comics are kept, and unprocessed files are not counted as failures.
+- Keep the app running during import. Continuing after the app exits or resuming across restarts is not supported. On Android, files that cannot be accessed directly are copied to temporary storage one at a time and released after processing.
 - Each PDF page is rendered to JPEG in order, and the first page is also used as the cover.
 - The result is a flat comic without chapters. Its title defaults to the PDF file name.
 - Pages are rendered at roughly three times their PDF point size with a 3000-pixel longest-edge limit to balance clarity, memory, and storage use.
@@ -150,7 +155,7 @@ Plain directory rules:
 
 - The comic title defaults to the comic folder name.
 - Child directories are chapters. Root-level images can also form a single-chapter comic.
-- Pages and chapters are sorted by file name. Zero-padded names such as `0001.jpg` and `0002.jpg` are recommended.
+- Pages and chapters in ordinary directories use natural filename order. Explicit chapter ranges from metadata are preserved.
 - The preferred cover is a root image whose base name is `cover`. Supported extensions are `jpg`, `jpeg`, `png`, `webp`, `gif`, `jpe`, and `avif`. Without one, the app tries the first root page, then `cover.*` or the first page in the first readable chapter.
 - Neither `metadata.json` nor `ComicInfo.xml` is required.
 

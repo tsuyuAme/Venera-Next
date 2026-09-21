@@ -161,6 +161,8 @@ class ReaderState extends State<Reader>
 
   History? history;
 
+  bool localPageOrderChecked = false;
+
   late final ReadingSessionTracker _readingSession;
   bool _readerContentReady = false;
 
@@ -371,6 +373,9 @@ class ReaderState extends State<Reader>
   }
 
   void updateHistory() {
+    // Initial layout and orientation can update the viewport before images
+    // arrive. Keep the saved image index intact until loading/migration ends.
+    if (isLoading || images == null) return;
     if (history != null) {
       // page >= maxPage handles both last image page and chapter comments page
       if (page >= maxPage) {
