@@ -139,7 +139,72 @@ class _ComicPageState extends LoadingState<ComicPage, ComicDetails>
         },
       );
     }
-    return NetworkError(message: error!, retry: retry, action: action);
+
+    // Keep cover & title from list navigation so user can still copy the name
+    final hasPreview =
+        (widget.title?.trim().isNotEmpty == true) ||
+        (widget.cover?.trim().isNotEmpty == true);
+
+    if (!hasPreview) {
+      return NetworkError(message: error!, retry: retry, action: action);
+    }
+
+    return Scaffold(
+      body: Column(
+        children: [
+          Appbar(
+            title: Text(""),
+            backgroundColor: context.colorScheme.surface,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ErrorPageCover(
+                  cover: widget.cover,
+                  sourceKey: widget.sourceKey,
+                  cid: widget.id,
+                  heroID: widget.heroID,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.title?.trim().isNotEmpty == true)
+                        SelectableText(
+                          widget.title!,
+                          style: ts.s18,
+                        )
+                      else
+                        Text(widget.id, style: ts.s18),
+                      const SizedBox(height: 8),
+                      Text(
+                        widget.sourceKey,
+                        style: ts.s12.copyWith(
+                          color: context.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 24),
+          Expanded(
+            child: Center(
+              child: NetworkError(
+                message: error!,
+                retry: retry,
+                action: action,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1022,3 +1087,57 @@ class _ComicPageLoadingPlaceHolder extends StatelessWidget {
     );
   }
 }
+
+
+class _ErrorPageCover extends StatelessWidget {
+  const _ErrorPageCover({
+    this.cover,
+    required this.sourceKey,
+    required this.cid,
+    this.heroID,
+  });
+
+  final String? cover;
+  final String sourceKey;
+  final String cid;
+  final int? heroID;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+    if (cover?.trim().isNotEmpty == true) {
+      child = AnimatedImage(
+        image: CachedImageProvider(cover!, sourceKey: sourceKey, cid: cid),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+      );
+    } else {
+      child = const SizedBox();
+    }
+
+    final box = Container(
+      decoration: BoxDecoration(
+        color: context.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: context.colorScheme.outlineVariant,
+            blurRadius: 1,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      height: 144,
+      width: 144 * 0.72,
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+
+    if (heroID != null) {
+      return Hero(tag: "cover$heroID", child: box);
+    }
+    return box;
+  }
+}
+

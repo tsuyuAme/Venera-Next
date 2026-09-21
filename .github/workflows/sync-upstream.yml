@@ -1,0 +1,78 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 每天 UTC 16:00 ≈ 北京时间 00:00
+    - cron: '0 16 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync upstream into branch + merge or open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          UPSTREAM_REPO="https://github.com/CyrilPeng/Venera-Next.git"
+          SYNC_BRANCH="sync-upstream"
+          MAIN_BRANCH="main"
+
+          git remote add upstream "$UPSTREAM_REPO" 2>/dev/null || true
+          git fetch upstream
+          git fetch origin
+
+          # 1) 用上游 main 更新专用同步分支（始终与官方对齐）
+          git checkout -B "$SYNC_BRANCH" upstream/main
+          git push -f origin "$SYNC_BRANCH"
+
+          # 2) 回到 main，尝试合并同步分支
+          git checkout "$MAIN_BRANCH"
+          git reset --hard "origin/$MAIN_BRANCH"
+
+          if git merge-base --is-ancestor origin/"$SYNC_BRANCH" HEAD; then
+            echo "main already contains upstream. Nothing to do."
+            exit 0
+          fi
+
+          if git merge "origin/$SYNC_BRANCH" --no-edit; then
+            # 无冲突：直接推进 main
+            git push origin "$MAIN_BRANCH"
+            echo "Merged $SYNC_BRANCH into $MAIN_BRANCH successfully."
+          else
+            # 有冲突：放弃本地 merge，改为开 PR
+            git merge --abort || true
+            echo "Conflict detected. Opening pull request..."
+
+            # 若已有从 sync-upstream → main 的 PR 就不再重复开
+            EXISTING=$(gh pr list --repo tsuyuAme/Venera-Next \
+              --base "$MAIN_BRANCH" --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number')
+
+            if [ -n "$EXISTING" ]; then
+              echo "PR #$EXISTING already open."
+            else
+              gh pr create --repo tsuyuAme/Venera-Next \
+                --base "$MAIN_BRANCH" \
+                --head "$SYNC_BRANCH" \
+                --title "Sync upstream: merge $SYNC_BRANCH into $MAIN_BRANCH" \
+                --body "自动同步上游 [CyrilPeng/Venera-Next](https://github.com/CyrilPeng/Venera-Next)。因与 \`main\` 存在冲突，改为 Pull Request，请手动解决冲突后合并。同步分支 \`$SYNC_BRANCH\` 内容与上游 \`main\` 一致。"
+              echo "Pull request created."
+            fi
+          fi

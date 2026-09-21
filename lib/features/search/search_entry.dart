@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:venera_next/components/gesture.dart';
+import 'package:venera_next/components/navigation_bar.dart';
 import 'package:venera_next/foundation/app.dart';
 import 'package:venera_next/foundation/context.dart';
 import 'package:venera_next/foundation/translations.dart';
 import 'package:venera_next/foundation/widget_utils.dart';
 
-import 'search_page.dart';
-
+/// Opens the primary Search tab (index 1) instead of pushing a disposable route,
+/// so previous search results remain when returning later.
 class SearchEntry extends StatelessWidget {
   const SearchEntry({super.key});
+
+  static const int searchTabIndex = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +26,11 @@ class SearchEntry extends StatelessWidget {
           child: ClickInkWell(
             borderRadius: BorderRadius.circular(32),
             onTap: () {
-              context.to(() => const SearchPage());
+              // Prefer tab switch so nested SearchResultPage stays mounted.
+              final navi = context.findAncestorStateOfType<NaviPaneState>();
+              if (navi != null) {
+                navi.updatePage(searchTabIndex);
+              }
             },
             child: Row(
               children: [
@@ -40,3 +47,4 @@ class SearchEntry extends StatelessWidget {
     );
   }
 }
+

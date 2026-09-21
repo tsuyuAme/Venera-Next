@@ -75,9 +75,24 @@ class ReaderState extends State<Reader>
         ReaderVolumeListener,
         ReaderImagePerPageHandler,
         WidgetsBindingObserver {
+  /// Scaffold is a *descendant* (inside Overlay), not an ancestor — cannot use
+  /// [findAncestorStateOfType]. Keep an explicit key to close bars on chapter change.
+  final GlobalKey<ReaderScaffoldState> scaffoldKey =
+      GlobalKey<ReaderScaffoldState>();
+
   @override
   void update() {
     setState(() {});
+  }
+
+  @override
+  void onChapterChanged() {
+    if (!mounted) return;
+    // Next frame: avoid racing chapter setState / list rebuild.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      scaffoldKey.currentState?.close();
+    });
   }
 
   /// The maximum page number for images only (excluding chapter comments page).
@@ -312,6 +327,7 @@ class ReaderState extends State<Reader>
           OverlayEntry(
             builder: (context) {
               return ReaderScaffold(
+                key: scaffoldKey,
                 child: ReaderGestureDetector(
                   child: ReaderImages(
                     key: Key(mode.isWaterfall ? mode.key : chapter.toString()),
@@ -652,6 +668,9 @@ abstract mixin class ReaderLocation {
 
   void update();
 
+  /// 章节切换成功后调用（用于隐藏阅读器工具栏等）
+  void onChapterChanged() {}
+
   bool enablePageAnimation(String cid, ComicType type) => appdata.settings
       .getReaderSetting(cid, type.sourceKey, 'enablePageAnimation');
 
@@ -730,12 +749,14 @@ abstract mixin class ReaderLocation {
   bool toChapter(int c, {bool toLastPage = false}) {
     if (_validateChapter(c) && !isLoading) {
       if (imageViewController?.toChapter(c, toLastPage: toLastPage) ?? false) {
+        onChapterChanged();
         return true;
       }
       chapter = c;
       page = 1;
       jumpToLastPageOnLoad = toLastPage;
       update();
+      onChapterChanged();
       return true;
     }
     return false;
@@ -856,4 +877,7 @@ abstract interface class ReaderImageViewController {
   Future<Uint8List?> getImageByOffset(Offset offset);
 
   String? getImageKeyByOffset(Offset offset);
+
+  /// Reload the image under [offset] (clear cache + re-download).
+  Future<void> reloadImageByOffset(Offset offset);
 }

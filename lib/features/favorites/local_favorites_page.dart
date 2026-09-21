@@ -164,25 +164,28 @@ class _LocalFavoritesPageState extends State<LocalFavoritesPage> {
     var list = keyword.split(" ");
     for (var k in list) {
       if (k.isEmpty) continue;
+      // Title / subtitle: substring match
       if (checkKeyWordMatch(k, comic.title, false)) {
         continue;
       } else if (comic.subtitle != null &&
           checkKeyWordMatch(k, comic.subtitle!, false)) {
         continue;
       } else if (comic.tags.any((tag) {
-        if (checkKeyWordMatch(k, tag, true)) {
+        // Tags: substring match on full tag, value after ':', and CN translation
+        if (checkKeyWordMatch(k, tag, false)) {
           return true;
         } else if (tag.contains(':') &&
-            checkKeyWordMatch(k, tag.split(':')[1], true)) {
+            checkKeyWordMatch(k, tag.split(':').last, false)) {
           return true;
         } else if (App.locale.languageCode != 'en' &&
-            checkKeyWordMatch(k, tag.translateTagsToCN, true)) {
+            checkKeyWordMatch(k, tag.translateTagsToCN, false)) {
           return true;
         }
         return false;
       })) {
         continue;
-      } else if (checkKeyWordMatch(k, comic.author, true)) {
+      } else if (checkKeyWordMatch(k, comic.author, false)) {
+        // Author also substring (was exact-only)
         continue;
       }
       return false;

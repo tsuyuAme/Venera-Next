@@ -230,6 +230,18 @@ abstract class ImageDownloader {
     _loadingImages.clear();
   }
 
+  /// Cancel an in-flight download so a manual reload can start fresh.
+  static void cancelComicImage(
+    String imageKey,
+    String? sourceKey,
+    String cid,
+    String eid,
+  ) {
+    final cacheKey = "$imageKey@$sourceKey@$cid@$eid";
+    final active = _loadingImages.remove(cacheKey);
+    active?.cancel();
+  }
+
   /// Load a comic image from the network or cache.
   /// The function will prevent multiple requests for the same image.
   static Stream<ImageDownloadProgress> loadComicImage(

@@ -7,6 +7,9 @@ import 'package:venera_next/features/reader/gesture.dart';
 import 'package:venera_next/foundation/context.dart';
 import 'package:venera_next/foundation/global_state.dart';
 import 'package:venera_next/foundation/translations.dart';
+import 'package:venera_next/foundation/cache_manager.dart';
+import 'package:venera_next/foundation/image_provider/reader_image.dart';
+import 'package:venera_next/network/images.dart';
 
 class ComicImage extends StatefulWidget {
   /// Modified from flutter Image
@@ -190,6 +193,38 @@ class ComicImageState extends State<ComicImage> with WidgetsBindingObserver {
     var localPoint = renderBox.globalToLocal(point);
     return renderBox.paintBounds.contains(localPoint);
   }
+
+  /// Drop memory/disk cache for this image and resolve again.
+  Future<void> reload() async {
+    var provider = widget.image;
+    if (provider is ResizeImage) {
+      provider = provider.imageProvider;
+    }
+    try {
+      await provider.evict();
+    } catch (_) {}
+    if (provider is ReaderImageProvider) {
+      final cacheKey =
+          "${provider.imageKey}@${provider.sourceKey}@${provider.cid}@${provider.eid}";
+      try {
+        await CacheManager().delete(cacheKey);
+      } catch (_) {}
+      ImageDownloader.cancelComicImage(
+        provider.imageKey,
+        provider.sourceKey,
+        provider.cid,
+        provider.eid,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _loadingProgress = null;
+      _lastException = null;
+      _replaceImage(info: null);
+    });
+    _resolveImage();
+  }
+
 
   void _updateInvertColors() {
     _invertColors =

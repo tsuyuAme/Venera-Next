@@ -713,6 +713,21 @@ class GalleryModeState extends State<_GalleryMode>
 
     return reader.images![startIndex];
   }
+
+  @override
+  Future<void> reloadImageByOffset(Offset offset) async {
+    for (var imageState in imageStates) {
+      final state = imageState as ComicImageState;
+      if (state.containsPoint(offset)) {
+        await state.reload();
+        return;
+      }
+    }
+    // Fallback: reload first visible image state if hit-test missed
+    if (imageStates.isNotEmpty) {
+      await (imageStates.first as ComicImageState).reload();
+    }
+  }
 }
 
 const Set<PointerDeviceKind> _kTouchLikeDeviceTypes = <PointerDeviceKind>{
@@ -965,6 +980,10 @@ class ContinuousModeState extends State<_ContinuousMode>
     }
     if (chapterChanged || reader.page != imageRef.page) {
       reader.setPage(imageRef.page);
+    }
+    if (chapterChanged) {
+      // Continuous / waterfall: chapter changes without toChapter().
+      reader.onChapterChanged();
     }
   }
 
@@ -1446,7 +1465,9 @@ class ContinuousModeState extends State<_ContinuousMode>
           position: photoViewController.position + offset,
         );
       },
-      onPointerSignal: onPointerSignal,
+      // Mouse wheel is handled by the outer full-viewport Listener so that
+      // scrolling still works when the cursor is outside the image bounds
+      // (e.g. side margins after limitImageWidth).
       child: widget,
     );
 
@@ -1512,15 +1533,22 @@ class ContinuousModeState extends State<_ContinuousMode>
       width = height * 0.7;
     }
 
-    return PhotoView.customChild(
-      backgroundDecoration: BoxDecoration(color: context.colorScheme.surface),
-      childSize: Size(width, height),
-      minScale: 1.0,
-      maxScale: 2.5,
-      strictScale: true,
-      controller: photoViewController,
-      onScaleUpdate: onScaleUpdate,
-      child: SizedBox(width: width, height: height, child: widget),
+    // Outer Listener covers the full reader viewport so mouse-wheel events
+    // work even when the cursor is over empty margins (PhotoView centers a
+    // narrower child when limitImageWidth is enabled).
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerSignal: onPointerSignal,
+      child: PhotoView.customChild(
+        backgroundDecoration: BoxDecoration(color: context.colorScheme.surface),
+        childSize: Size(width, height),
+        minScale: 1.0,
+        maxScale: 2.5,
+        strictScale: true,
+        controller: photoViewController,
+        onScaleUpdate: onScaleUpdate,
+        child: SizedBox(width: width, height: height, child: widget),
+      ),
     );
   }
 
@@ -1701,6 +1729,21 @@ class ContinuousModeState extends State<_ContinuousMode>
       }
     }
     return imageKey;
+  }
+
+  @override
+  Future<void> reloadImageByOffset(Offset offset) async {
+    for (var imageState in imageStates) {
+      final state = imageState as ComicImageState;
+      if (state.containsPoint(offset)) {
+        await state.reload();
+        return;
+      }
+    }
+    // Fallback: reload first visible image state if hit-test missed
+    if (imageStates.isNotEmpty) {
+      await (imageStates.first as ComicImageState).reload();
+    }
   }
 }
 

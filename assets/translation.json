@@ -36,6 +36,7 @@
     "Auto Page Turning": "自动翻页",
     "Chapters": "章节",
     "Save Image": "保存图片",
+    "Reload Image": "重新加载图片",
     "Share": "分享",
     "Details": "详情",
     "Copy Title": "复制标题",
@@ -660,6 +661,21 @@
     "Removed from read later": "已移出稍后阅读",
     "Added to read later": "已加入稍后阅读",
     "Save comics here with Read later on the details page.": "在漫画详情页点击“稍后阅读”，即可保存到这里。"
+    "Artist favorites": "画师收藏",
+    "No favorite artists yet": "还没有收藏的画师",
+    "Long press the artist tag on comic page to add": "在漫画详情页长按画师标签即可收藏",
+    "Sources: @count": "来自 @count 个来源",
+    "Delete artist": "删除画师",
+    "Delete \"@name\" from artist favorites?": "从画师收藏中删除「@name」？",
+    "Analyze": "分析",
+    "Re-analyze": "重新分析",
+    "No tag data from sources": "源未返回标签数据",
+    "Profile generated": "特点生成完成",
+    "Frequent tags: @tags": "常画：@tags",
+    "Analyze all": "全体搜刮",
+    "Analyze all artists": "全体搜刮",
+    "Analyze all @count artists? It may take several minutes.": "要分析全部 @count 位画师吗？分析可能需要几分钟。",
+    "All artists analyzed": "全体画师分析完成"
   },
   "zh_TW": {
     "Home": "首頁",
@@ -699,6 +715,7 @@
     "Auto Page Turning": "自動翻頁",
     "Chapters": "章節",
     "Save Image": "儲存圖片",
+    "Reload Image": "重新載入圖片",
     "Share": "分享",
     "Details": "詳情",
     "Description": "描述",
@@ -1322,5 +1339,20 @@
     "Removed from read later": "已移出稍後閱讀",
     "Added to read later": "已加入稍後閱讀",
     "Save comics here with Read later on the details page.": "在漫畫詳情頁點擊「稍後閱讀」，即可儲存到這裡。"
+    "Artist favorites": "畫師收藏",
+    "No favorite artists yet": "還沒有收藏的畫師",
+    "Long press the artist tag on comic page to add": "在漫畫詳情頁長按畫師標籤即可收藏",
+    "Sources: @count": "來自 @count 個來源",
+    "Delete artist": "刪除畫師",
+    "Delete \"@name\" from artist favorites?": "從畫師收藏中刪除「@name」？",
+    "Analyze": "分析",
+    "Re-analyze": "重新分析",
+    "No tag data from sources": "源未返回標籤資料",
+    "Profile generated": "特點生成完成",
+    "Frequent tags: @tags": "常畫：@tags",
+    "Analyze all": "全體搜刮",
+    "Analyze all artists": "全體搜刮",
+    "Analyze all @count artists? It may take several minutes.": "要分析全部 @count 位畫師嗎？分析可能需要幾分鐘。",
+    "All artists analyzed": "全體畫師分析完成"
   }
 }

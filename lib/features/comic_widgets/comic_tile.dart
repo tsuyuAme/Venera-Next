@@ -125,7 +125,13 @@ void _openComicPage({
   String? title,
   int? heroID,
 }) {
-  final targetContext = context ?? App.mainNavigatorKey?.currentContext;
+  // Prefer the nearest navigator (e.g. Search tab nested stack). Falling back
+  // to mainNavigator alone pushed details above tabs and broke mouse-back.
+  final targetContext = context ??
+      (App.secondaryNavigatorActive
+          ? App.secondaryNavigatorKey?.currentContext
+          : null) ??
+      App.mainNavigatorKey?.currentContext;
   targetContext?.to(
     () => _buildComicPage(
       id: id,
@@ -195,12 +201,13 @@ class ComicTile extends StatelessWidget {
 
   final ComicTileDisplayMode? displayMode;
 
-  void _onTap() {
+  void _onTap(BuildContext context) {
     if (onTap != null) {
       onTap!();
       return;
     }
     _openComicPage(
+      context: context,
       id: comic.id,
       sourceKey: comic.sourceKey,
       cover: comic.cover,
@@ -237,6 +244,7 @@ class ComicTile extends StatelessWidget {
         text: 'Details'.tl,
         onClick: () {
           _openComicPage(
+            context: context,
             id: comic.id,
             sourceKey: comic.sourceKey,
             cover: comic.cover,
@@ -392,7 +400,7 @@ class ComicTile extends StatelessWidget {
 
         return ClickInkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: _onTap,
+          onTap: () => _onTap(context),
           onLongPress: enableLongPressed ? () => _onLongPressed(context) : null,
           onSecondaryTapDown: (detail) => onSecondaryTap(detail, context),
           child: Padding(
@@ -452,7 +460,7 @@ class ComicTile extends StatelessWidget {
 
         return ClickInkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: _onTap,
+          onTap: () => _onTap(context),
           onLongPress: enableLongPressed ? () => _onLongPressed(context) : null,
           onSecondaryTapDown: (detail) => onSecondaryTap(detail, context),
           child: Column(
@@ -568,7 +576,7 @@ class ComicTile extends StatelessWidget {
 
         return ClickInkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: _onTap,
+          onTap: () => _onTap(context),
           onLongPress: enableLongPressed ? () => _onLongPressed(context) : null,
           onSecondaryTapDown: (detail) => onSecondaryTap(detail, context),
           child: Padding(
