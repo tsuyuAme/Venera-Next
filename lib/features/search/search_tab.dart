@@ -7,6 +7,9 @@ import 'package:venera_next/features/search/search_page.dart';
 /// stack when the user switches to Home / Favorites / etc.
 ///
 /// Combined with [IndexedStack] in [MainPage], this keeps search state alive.
+///
+/// [NavigatorPopHandler] wires Android/iOS system back into this nested stack
+/// (desktop mouse-back / Esc already go through [App.pop]).
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
 
@@ -53,14 +56,22 @@ class SearchTabState extends State<SearchTab>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Navigator(
-      key: navigatorKey,
-      onGenerateRoute: (settings) {
-        return AppPageRoute(
-          preventRebuild: false,
-          builder: (context) => const SearchPage(),
-        );
+    // Without this, the system back button only consults the *main* shell
+    // navigator (see NaviPane PopScope). Nested search result / source-result
+    // routes would be ignored and Android would exit or no-op.
+    return NavigatorPopHandler(
+      onPopWithResult: (result) {
+        navigatorKey.currentState?.pop(result);
       },
+      child: Navigator(
+        key: navigatorKey,
+        onGenerateRoute: (settings) {
+          return AppPageRoute(
+            preventRebuild: false,
+            builder: (context) => const SearchPage(),
+          );
+        },
+      ),
     );
   }
 }
